@@ -1,1 +1,6 @@
 /env
+/backend/api/migrations
+/backend/api/__pycache__
+/backend/backend/__pycache__
+
+/backend/backend/settings.py
