@@ -12,22 +12,32 @@ const EventSet = () => {
         const fetchEventSet = async () => {
             try {
                 const data = await getEventSet(eventId);
-                setEventSetData(data.data || []);
+                console.log("Fetched event set data:", data);
+                setEventSetData(Array.isArray(data.data) ? data.data : []);
             } catch (error) {
                 console.error("Failed to fetch event set:", error);
+                setEventSetData([]);
             }
         };
         fetchEventSet();
     }, [eventId]);
 
     const handleAddRow = () => {
-        setEventSetData([...eventSetData, newRow]);
-        setNewRow({});
+        if (Array.isArray(eventSetData)) {
+            setEventSetData([...eventSetData, newRow]);
+            setNewRow({});
+        } else {
+            console.error("eventSetData is not an array:", eventSetData);
+        }
     };
 
     const handleDeleteRow = (index) => {
-        const updatedData = eventSetData.filter((_, i) => i !== index);
-        setEventSetData(updatedData);
+        if (Array.isArray(eventSetData)) {
+            const updatedData = eventSetData.filter((_, i) => i !== index);
+            setEventSetData(updatedData);
+        } else {
+            console.error("eventSetData is not an array:", eventSetData);
+        }
     };
 
     const handleSave = async () => {
@@ -53,19 +63,20 @@ const EventSet = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {eventSetData.map((row, index) => (
-                        <tr key={index}>
-                            <td>{index + 1}</td>
-                            <td>{row.column1}</td>
-                            <td>{row.column2}</td>
-                            <td>{row.column3}</td>
-                            <td>
-                                <Button variant="danger" size="sm" onClick={() => handleDeleteRow(index)}>
-                                    Delete
-                                </Button>
-                            </td>
-                        </tr>
-                    ))}
+                    {Array.isArray(eventSetData) &&
+                        eventSetData.map((row, index) => (
+                            <tr key={index}>
+                                <td>{index + 1}</td>
+                                <td>{row.column1}</td>
+                                <td>{row.column2}</td>
+                                <td>{row.column3}</td>
+                                <td>
+                                    <Button variant="danger" size="sm" onClick={() => handleDeleteRow(index)}>
+                                        Delete
+                                    </Button>
+                                </td>
+                            </tr>
+                        ))}
                     <tr>
                         <td>New</td>
                         <td>
