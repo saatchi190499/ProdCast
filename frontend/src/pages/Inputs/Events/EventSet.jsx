@@ -1,120 +1,78 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Form } from 'react-bootstrap';
+import { DataGrid, GridToolbar } from '@mui/x-data-grid';
 import { getEventSet, updateEventSet } from '../../../services/api';
 import { useParams } from 'react-router-dom';
+import { Button, Box } from '@mui/material';
 
 const EventSet = () => {
     const { eventId } = useParams();
-    const [eventSetData, setEventSetData] = useState([]);
-    const [newRow, setNewRow] = useState({});
+    const [rows, setRows] = useState([]);
+    const [columns, setColumns] = useState([
+        { field: 'id', headerName: 'ID', width: 100 },
+        { field: 'column1', headerName: 'Column 1', editable: true, width: 150 },
+        { field: 'column2', headerName: 'Column 2', editable: true, width: 150 },
+        { field: 'column3', headerName: 'Column 3', editable: true, width: 150 },
+        { field: 'column4', headerName: 'Column 4', editable: true, width: 150 },
+        { field: 'column5', headerName: 'Column 5', editable: true, width: 150 },
+    ]);
 
     useEffect(() => {
         const fetchEventSet = async () => {
             try {
                 const data = await getEventSet(eventId);
-                console.log("Fetched event set data:", data);
-                setEventSetData(Array.isArray(data.data) ? data.data : []);
+                setRows(data.data || []); // Set rows from the API response
             } catch (error) {
-                console.error("Failed to fetch event set:", error);
-                setEventSetData([]);
+                console.error('Failed to fetch event set:', error);
             }
         };
         fetchEventSet();
     }, [eventId]);
 
-    const handleAddRow = () => {
-        if (Array.isArray(eventSetData)) {
-            setEventSetData([...eventSetData, newRow]);
-            setNewRow({});
-        } else {
-            console.error("eventSetData is not an array:", eventSetData);
-        }
-    };
-
-    const handleDeleteRow = (index) => {
-        if (Array.isArray(eventSetData)) {
-            const updatedData = eventSetData.filter((_, i) => i !== index);
-            setEventSetData(updatedData);
-        } else {
-            console.error("eventSetData is not an array:", eventSetData);
-        }
-    };
-
     const handleSave = async () => {
         try {
-            await updateEventSet(eventId, eventSetData);
-            alert("Event set saved successfully!");
+            await updateEventSet(eventId, rows);
+            alert('EventSet saved successfully!');
         } catch (error) {
-            console.error("Failed to save event set:", error);
+            console.error('Failed to save event set:', error);
         }
+    };
+
+    const handleAddRow = () => {
+        const newId = rows.length > 0 ? rows[rows.length - 1].id + 1 : 1;
+        const newRow = { id: newId, column1: '', column2: '', column3: '', column4: '', column5: '' };
+        setRows([...rows, newRow]);
+    };
+
+    const handleDeleteRow = (selectedIds) => {
+        setRows(rows.filter((row) => !selectedIds.includes(row.id)));
     };
 
     return (
-        <div className="container mt-5">
-            <h1 className="text-center">Event Set</h1>
-            <Table striped bordered hover>
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Column 1</th>
-                        <th>Column 2</th>
-                        <th>Column 3</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {Array.isArray(eventSetData) &&
-                        eventSetData.map((row, index) => (
-                            <tr key={index}>
-                                <td>{index + 1}</td>
-                                <td>{row.column1}</td>
-                                <td>{row.column2}</td>
-                                <td>{row.column3}</td>
-                                <td>
-                                    <Button variant="danger" size="sm" onClick={() => handleDeleteRow(index)}>
-                                        Delete
-                                    </Button>
-                                </td>
-                            </tr>
-                        ))}
-                    <tr>
-                        <td>New</td>
-                        <td>
-                            <Form.Control
-                                type="text"
-                                placeholder="Column 1"
-                                value={newRow.column1 || ''}
-                                onChange={(e) => setNewRow({ ...newRow, column1: e.target.value })}
-                            />
-                        </td>
-                        <td>
-                            <Form.Control
-                                type="text"
-                                placeholder="Column 2"
-                                value={newRow.column2 || ''}
-                                onChange={(e) => setNewRow({ ...newRow, column2: e.target.value })}
-                            />
-                        </td>
-                        <td>
-                            <Form.Control
-                                type="text"
-                                placeholder="Column 3"
-                                value={newRow.column3 || ''}
-                                onChange={(e) => setNewRow({ ...newRow, column3: e.target.value })}
-                            />
-                        </td>
-                        <td>
-                            <Button variant="success" size="sm" onClick={handleAddRow}>
-                                Add
-                            </Button>
-                        </td>
-                    </tr>
-                </tbody>
-            </Table>
-            <Button variant="primary" onClick={handleSave}>
+        <Box sx={{ height: 500, width: '100%', marginTop: 4 }}>
+            <Button variant="contained" color="primary" onClick={handleAddRow} sx={{ marginBottom: 2 }}>
+                Add Row
+            </Button>
+            <Button variant="contained" color="secondary" onClick={handleSave} sx={{ marginBottom: 2, marginLeft: 2 }}>
                 Save Changes
             </Button>
-        </div>
+            <DataGrid
+                rows={rows}
+                columns={columns}
+                checkboxSelection
+                disableSelectionOnClick
+                processRowUpdate={(newRow) => {
+                    const updatedRows = rows.map((row) => (row.id === newRow.id ? newRow : row));
+                    setRows(updatedRows);
+                    return newRow;
+                }}
+                onProcessRowUpdateError={(error) => console.error('Error updating row:', error)}
+                components={{
+                    Toolbar: GridToolbar,
+                }}
+                onSelectionModelChange={(ids) => handleDeleteRow(ids)}
+                experimentalFeatures={{ newEditingApi: true }}
+            />
+        </Box>
     );
 };
 
