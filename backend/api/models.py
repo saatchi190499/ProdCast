@@ -18,9 +18,6 @@ class EventSet(models.Model):
 
     def __str__(self):
         return f"EventSet for {self.event.name}"
-    
-
-
 
 class UnitCategory(models.Model):
     unit_category_name = models.CharField(max_length=255)

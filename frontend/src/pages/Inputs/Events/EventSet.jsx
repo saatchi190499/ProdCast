@@ -1,79 +1,109 @@
 import React, { useState, useEffect } from 'react';
-import { DataGrid, GridToolbar } from '@mui/x-data-grid';
-import { getEventSet, updateEventSet } from '../../../services/api';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
+import { HotTable } from '@handsontable/react';
+import 'handsontable/dist/handsontable.full.min.css';
+import { getEventSet, updateEventSet, getDropdownData } from '../../../services/api';
 import { Button, Box } from '@mui/material';
+import Handsontable from 'handsontable';
 
-const EventSet = () => {
+const DataSetPage = () => {
+    const [data, setData] = useState([]);
+    const [dropdownData, setDropdownData] = useState({
+        objectTypes: [],
+        objectInstances: [],
+        objectTypeProperties: [],
+    });
+    const [loading, setLoading] = useState(true);
     const { eventId } = useParams();
-    const [rows, setRows] = useState([]);
-    const [columns, setColumns] = useState([
-        { field: 'id', headerName: 'ID', width: 100 },
-        { field: 'column1', headerName: 'Column 1', editable: true, width: 150 },
-        { field: 'column2', headerName: 'Column 2', editable: true, width: 150 },
-        { field: 'column3', headerName: 'Column 3', editable: true, width: 150 },
-        { field: 'column4', headerName: 'Column 4', editable: true, width: 150 },
-        { field: 'column5', headerName: 'Column 5', editable: true, width: 150 },
-    ]);
+    const location = useLocation();
+    const subDataSourceName = location.state?.subDataSourceName || "Unknown";
 
     useEffect(() => {
-        const fetchEventSet = async () => {
+        const fetchData = async () => {
             try {
-                const data = await getEventSet(eventId);
-                setRows(data.data || []); // Set rows from the API response
+                const dropdowns = await getDropdownData();
+                setDropdownData({
+                    objectTypes: dropdowns.objectTypes.map((item) => item.object_type_name),
+                    objectInstances: dropdowns.objectInstances.map((item) => item.object_instance_name),
+                    objectTypeProperties: dropdowns.objectTypeProperties.map((item) => item.object_type_property_name),
+                });
+
+                const dataSet = await getEventSet(eventId);
+                const formattedData = dataSet.map((item) => ({
+                    id: item.id,
+                    created_date: item.created_date,
+                    object_type: item.object_type,
+                    object_instance: item.object_instance,
+                    object_type_property: item.object_type_property,
+                }));
+                setData(formattedData);
             } catch (error) {
-                console.error('Failed to fetch event set:', error);
+                console.error('Failed to fetch data:', error);
+            } finally {
+                setLoading(false);
             }
         };
-        fetchEventSet();
+
+        fetchData();
     }, [eventId]);
 
     const handleSave = async () => {
         try {
-            await updateEventSet(eventId, rows);
-            alert('EventSet saved successfully!');
+            const payload = data.map((row) => ({
+                id: row.id || undefined,
+                object_type: row.object_type,
+                object_instance: row.object_instance,
+                object_type_property: row.object_type_property,
+            }));
+
+            console.log('Payload to save:', payload);
+            await updateEventSet(eventId, payload);
+            alert('DataSet saved successfully!');
         } catch (error) {
-            console.error('Failed to save event set:', error);
+            console.error('Failed to save data set:', error);
         }
     };
 
-    const handleAddRow = () => {
-        const newId = rows.length > 0 ? rows[rows.length - 1].id + 1 : 1;
-        const newRow = { id: newId, column1: '', column2: '', column3: '', column4: '', column5: '' };
-        setRows([...rows, newRow]);
-    };
-
-    const handleDeleteRow = (selectedIds) => {
-        setRows(rows.filter((row) => !selectedIds.includes(row.id)));
-    };
+    if (loading) {
+        return <div>Loading...</div>;
+    }
 
     return (
-        <Box sx={{ height: 500, width: '100%', marginTop: 4 }}>
-            <Button variant="contained" color="primary" onClick={handleAddRow} sx={{ marginBottom: 2 }}>
-                Add Row
-            </Button>
-            <Button variant="contained" color="secondary" onClick={handleSave} sx={{ marginBottom: 2, marginLeft: 2 }}>
+        <Box sx={{ width: '100%', marginTop: 4 }}>
+            <h2>Sub Data Source: {subDataSourceName}</h2> {/* Display sub_data_source name */}
+            <Button variant="contained" color="primary" onClick={handleSave} sx={{ marginBottom: 2 }}>
                 Save Changes
             </Button>
-            <DataGrid
-                rows={rows}
-                columns={columns}
-                checkboxSelection
-                disableSelectionOnClick
-                processRowUpdate={(newRow) => {
-                    const updatedRows = rows.map((row) => (row.id === newRow.id ? newRow : row));
-                    setRows(updatedRows);
-                    return newRow;
-                }}
-                onProcessRowUpdateError={(error) => console.error('Error updating row:', error)}
-                components={{
-                    Toolbar: GridToolbar,
-                }}
-                onSelectionModelChange={(ids) => handleDeleteRow(ids)}
-                experimentalFeatures={{ newEditingApi: true }}
+            <HotTable
+                data={data}
+                colHeaders={["Id", "Created Date", "Object Type", "Object Instance", "Object Type Property"]}
+                columns={[
+                    { data: 'id', type: 'numeric', readOnly: true },
+                    { data: 'created_date', type: 'date', dateFormat: 'YYYY-MM-DD', readOnly: true },
+                    {
+                        data: 'object_type',
+                        type: 'dropdown',
+                        source: dropdownData.objectTypes,
+                    },
+                    {
+                        data: 'object_instance',
+                        type: 'dropdown',
+                        source: dropdownData.objectInstances,
+                    },
+                    {
+                        data: 'object_type_property',
+                        type: 'dropdown',
+                        source: dropdownData.objectTypeProperties,
+                    },
+                ]}
+                rowHeaders={true}
+                stretchH="all"
+                width="100%"
+                height="500"
+                licenseKey="non-commercial-and-evaluation"
             />
         </Box>
     );
 };
 
-export default EventSet;
+export default DataSetPage;

@@ -53,13 +53,13 @@ api.interceptors.request.use(
 
 // API Methods
 export const login = async (username, password) => {
-    const response = await api.post('/login/', { username, password });
-
-    // Store tokens after login
-    localStorage.setItem('accessToken', response.data.access);
-    localStorage.setItem('refreshToken', response.data.refresh);
-
-    return response.data;
+    try {
+        const response = await axios.post(`${API_URL}/login/`, { username, password });
+        return response.data;
+    } catch (error) {
+        console.error('Login error:', error);
+        throw error; // Rethrow the error to handle it in the component
+    }
 };
 
 export const getEvents = async () => {
@@ -74,12 +74,59 @@ export const createEvent = async (event) => {
 
 export const getEventSet = async (eventId) => {
     const response = await api.get(`/event-set/${eventId}/`);
+    console.log("Event ID:", eventId);
+
+    return response.data;
+};
+
+export const deleteEvent = async (eventId) => {
+    const response = await api.delete(`/event-delete/${eventId}/`);
+    console.log("Delete Event ID:", eventId);
+
     return response.data;
 };
 
 export const updateEventSet = async (eventId, data) => {
-    const response = await api.put(`/event-set/${eventId}/`, { data });
+    try {
+        const response = await api.put(`/event-set/${eventId}/`, data); // Send data directly
+        return response.data;
+    } catch (error) {
+        console.error('Failed to update event set:', error.response?.data || error.message);
+        throw error;
+    }
+};
+
+// Fetch object instances
+export const getObjectInstances = async () => {
+    const response = await axios.get(`${API_URL}/object-instances/`);
     return response.data;
 };
+
+// Fetch object type properties
+export const getObjectTypeProperties = async () => {
+    const response = await axios.get(`${API_URL}/object-type-properties/`);
+    return response.data;
+};
+
+// Fetch sub data sources
+export const getSubDataSources = async () => {
+    const response = await axios.get(`${API_URL}/sub-data-sources/`);
+    return response.data;
+};
+// Fetch sub data sources
+export const getObjectTypes = async () => {
+    const response = await axios.get(`${API_URL}/object-types/`);
+    return response.data;
+};
+
+// Fetch all dropdown data
+export const getDropdownData = async () => {
+    const [objectTypes,objectInstances, objectTypeProperties, subDataSources] = await Promise.all([
+        getObjectTypes(),
+        getObjectInstances(),
+        getObjectTypeProperties(),
+    ]);
+    return { objectTypes, objectInstances, objectTypeProperties };
+}
 
 export default api;

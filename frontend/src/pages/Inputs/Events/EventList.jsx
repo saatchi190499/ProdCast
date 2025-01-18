@@ -1,23 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form } from 'react-bootstrap';
-import { getEvents, createEvent } from '../../../services/api';
+import { Table, Button, Modal, Form, Spinner } from 'react-bootstrap';
+import { getEvents, createEvent, deleteEvent } from '../../../services/api';
 import { useNavigate } from 'react-router-dom';
 
 const EventList = () => {
     const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [newEvent, setNewEvent] = useState({ name: '', comment: '', copyFrom: '' });
+    const [error, setError] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
         const fetchEvents = async () => {
-            const data = await getEvents();
-            setEvents(data);
+            try {
+                const data = await getEvents();
+                setEvents(data);
+            } catch (error) {
+                console.error('Failed to fetch events:', error);
+                setError('Failed to load events. Please try again later.');
+            } finally {
+                setLoading(false);
+            }
         };
         fetchEvents();
     }, []);
 
     const handleRegister = async () => {
+        if (!newEvent.name.trim()) {
+            alert('Event name is required.');
+            return;
+        }
         try {
             const response = await createEvent(newEvent);
             setShowModal(false);
@@ -25,13 +38,45 @@ const EventList = () => {
             setEvents(data);
             navigate(`/event-set/${response.id}`); // Open the new EventSet page
         } catch (error) {
-            console.error("Failed to create event:", error);
+            console.error('Failed to create event:', error);
+            alert('Failed to register event. Please try again later.');
         }
     };
 
-    const handleEdit = (id) => {
-        navigate(`/event-set/${id}`); // Navigate to the EventSet page
+    const handleEdit = (id, subDataSourceName) => {
+        navigate(`/event-set/${id}`, { state: { subDataSourceName } }); // Navigate to the EventSet page
     };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this event?')) {
+            return;
+        }
+        try {
+            await deleteEvent(id);
+            setEvents(events.filter((event) => event.id !== id)); // Remove the deleted event from the list
+            alert('Event deleted successfully.');
+        } catch (error) {
+            console.error('Failed to delete event:', error);
+            alert('Failed to delete event. Please try again later.');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="text-center mt-5">
+                <Spinner animation="border" />
+                <p>Loading events...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="text-center mt-5">
+                <p className="text-danger">{error}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="container mt-5">
@@ -44,9 +89,8 @@ const EventList = () => {
                     <tr>
                         <th>ID</th>
                         <th>Name</th>
-                        <th>Created At</th>
-                        <th>Created By</th>
-                        <th>Comment</th>
+                        <th>Created Date</th>
+                        <th>Modified Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -54,18 +98,24 @@ const EventList = () => {
                     {events.map((event) => (
                         <tr key={event.id}>
                             <td>{event.id}</td>
-                            <td>{event.name}</td>
-                            <td>{event.created_at}</td>
-                            <td>{event.created_by}</td>
-                            <td>{event.comment}</td>
+                            <td>{event.sub_data_source_name}</td>
+                            <td>{event.created_date}</td>
+                            <td>{event.modified_date}</td>
                             <td>
                                 <Button
                                     variant="warning"
                                     size="sm"
                                     className="me-2"
-                                    onClick={() => handleEdit(event.id)}
+                                    onClick={() => handleEdit(event.id, event.sub_data_source_name)}
                                 >
                                     Edit
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => handleDelete(event.id)}
+                                >
+                                    Delete
                                 </Button>
                             </td>
                         </tr>
@@ -98,7 +148,7 @@ const EventList = () => {
                                 <option value="">None</option>
                                 {events.map((event) => (
                                     <option key={event.id} value={event.id}>
-                                        {event.name}
+                                        {event.sub_data_source_name}
                                     </option>
                                 ))}
                             </Form.Control>
