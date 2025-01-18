@@ -1,7 +1,5 @@
 from django.contrib import admin
 from .models import (
-    Event,
-    EventSet,
     UnitCategory,
     UnitType,
     UnitDefinition,
@@ -12,21 +10,6 @@ from .models import (
     SubDataSource,
     DataSet
 )
-
-
-@admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "created_at", "created_by", "last_modified")
-    search_fields = ("name", "created_by__username")
-    list_filter = ("created_at", "last_modified")
-    ordering = ("-created_at",)
-
-
-@admin.register(EventSet)
-class EventSetAdmin(admin.ModelAdmin):
-    list_display = ("id", "event", "last_modified")
-    search_fields = ("event__name",)
-    ordering = ("-last_modified",)
 
 
 @admin.register(UnitCategory)
